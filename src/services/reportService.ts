@@ -24,6 +24,7 @@ export async function getWeeklySummary(
   const result = await pool.query(WEEKLY_SUMMARY_SQL, [startWeek, endWeek]);
 
   // The pg driver returns dates as strings; cast to the expected type.
+  console.log(result);
   return result.rows.map((row) => ({
     week_start_date: row.week_start_date instanceof Date
       ? row.week_start_date.toISOString().slice(0, 10)

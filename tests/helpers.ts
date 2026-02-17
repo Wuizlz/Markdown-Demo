@@ -96,6 +96,39 @@ export function createTestPool() {
     true
   );
 
+  // Register now() to mimic Postgres current timestamp.
+  db.public.registerFunction(
+    {
+      name: "now",
+      args: [],
+      returns: DataType.timestamptz,
+      implementation: () => new Date()
+    },
+    true
+  );
+
+  // Register pg_get_serial_sequence used by seed.sql.
+  db.public.registerFunction(
+    {
+      name: "pg_get_serial_sequence",
+      args: [DataType.text, DataType.text],
+      returns: DataType.text,
+      implementation: (table: string, column: string) => `${table}.${column}`
+    },
+    true
+  );
+
+  // Register setval used by seed.sql sequence resets.
+  db.public.registerFunction(
+    {
+      name: "setval",
+      args: [DataType.text, DataType.bigint, DataType.bool],
+      returns: DataType.bigint,
+      implementation: (_sequence: string, value: number) => Number(value)
+    },
+    true
+  );
+
   // Register date_trunc for week calculations in reporting queries.
   db.public.registerFunction({
     name: "date_trunc",
@@ -145,6 +178,13 @@ export function createTestPool() {
   const schemaPath = path.join(__dirname, "..", "db", "schema.sql");
   const schemaSql = fs.readFileSync(schemaPath, "utf8");
   db.public.none(schemaSql);
+
+  // Load seed data when available to populate the in-memory DB for tests.
+  const seedPath = path.join(__dirname, "..", "db", "seed.sql");
+  if (fs.existsSync(seedPath)) {
+    const seedSql = fs.readFileSync(seedPath, "utf8");
+    db.public.none(seedSql);
+  }
 
   // Create a pg-compatible pool adapter for the in-memory DB.
   const pg = db.adapters.createPg();
